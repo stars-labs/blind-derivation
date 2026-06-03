@@ -2,14 +2,16 @@
 
 *[English](README.md)*
 
-**GPU 加速的比特币 HD 钱包地址推导 —— 私钥永不离开本地。**
+**GPU 加速的 secp256k1 链 HD 钱包地址推导 —— 私钥永不离开本地。**
 
 `blind-derivation` 把 HD 钱包地址生成拆成两个阶段,让繁重、可并行的部分能安全地外包给 GPU(本地或远程),**全程不暴露任何密钥材料**:
 
 1. **本地 / 安全** —— 助记词 → 种子 → `xpub`(私钥留在本地)。
-2. **GPU / 可外包** —— `xpub` → 数百万个子地址,全部在 GPU 上算。
+2. **GPU / 可外包** —— `xpub` → 数百万个子公钥 / 地址,全部在 GPU 上算。
 
-因为非硬化 BIP32 派生只需要公钥和链码,GPU 是"盲"的:它能生成每一个地址,却永远无法反推出私钥。这就是 blind-derivation 里 "blind" 的含义。
+因为非硬化 BIP32 派生只需要公钥和链码,GPU 是"盲"的:它能生成每一个公钥,却永远无法反推出私钥。这就是 blind-derivation 里 "blind" 的含义。
+
+GPU 算的是最贵、且**与链无关**的核心 —— 非硬化 secp256k1 子公钥 —— 这是所有 secp256k1 链共享的部分(比特币及其分叉、以太坊及 EVM L2、波场、Cosmos……)。见[多链支持](#多链支持)。
 
 > ⚡ 真实、实测的 GPU 推导 —— **RTX 3070 Laptop 上 ~2.0–2.7M 地址/秒**,约为 16 线程 CPU 的 16–20 倍。不是模拟。
 
@@ -29,6 +31,7 @@
 - **真正的 CUDA kernel** —— secp256k1 域/群运算、定基 `k·G`、HMAC-SHA512、SHA-256、RIPEMD-160 全部在设备端实现。GPU 路径上没有任何 CPU 回退。
 - **逐字节正确性** —— 每个 GPU 结果都在测试套件里与纯 Rust 的 CPU 参照(`k256` + 本项目自带的 BIP32)对拍。
 - **三种构建模式** —— 真 GPU(`cuda`)、无 GPU 开发用的 CPU 模拟(`cuda-sim`)、纯 CPU(默认)。
+- **与链无关的核心** —— GPU 推导的 secp256k1 子公钥为所有 secp256k1 链所共享;比特币地址编码已内置,其他链复用同样的公钥(见[多链支持](#多链支持))。
 - **地址类型** —— P2PKH(传统)、P2WPKH(原生 SegWit / bech32)、P2SH-P2WPKH(包装 SegWit)。
 - **CLI + 库** —— 既可当二进制用,也可作为 crate 嵌入。
 
@@ -48,25 +51,60 @@
 
 ---
 
+## 多链支持
+
+GPU 干的重活 —— 非硬化 BIP32 推导 **secp256k1 子公钥** —— 对*每一条*用 secp256k1 曲线的链都是一样的。只有最后那步廉价的**地址编码**因链而异,而它在主机端对已经推导好的公钥执行。
+
+```mermaid
+flowchart LR
+    PUB["secp256k1 子公钥<br/>(GPU 推导,与链无关)"]
+    PUB --> BTC["比特币 / 分叉<br/>HASH160 → base58 / bech32"]
+    PUB --> EVM["以太坊 & EVM L2<br/>keccak256(非压缩)[12:]"]
+    PUB --> TRON["波场 Tron<br/>keccak256 → base58check"]
+    PUB --> COSMOS["Cosmos<br/>HASH160 → bech32(链 hrp)"]
+
+    classDef done fill:#0b3d2e,stroke:#1f7a5a,color:#e6fff4;
+    classDef todo fill:#3d2e0b,stroke:#a5853a,color:#fff4e6;
+    class BTC done;
+    class EVM,TRON,COSMOS todo;
+```
+
+| 家族 | 示例 | 公钥推导(GPU) | 地址编码 |
+|------|------|:--------------:|----------|
+| **比特币及分叉** | BTC, LTC, DOGE, BCH | ✅ 共享 | ✅ **已内置**(P2PKH / P2WPKH / P2SH-P2WPKH) |
+| **以太坊 / EVM** | ETH, BSC, Polygon, Base, Arbitrum | ✅ 共享 | 🔜 `keccak256(非压缩公钥)` —— 自行套用 / 路线图中 |
+| **波场 Tron** | TRX | ✅ 共享 | 🔜 keccak256 + base58check |
+| **Cosmos** | ATOM, Osmosis | ✅ 共享 | 🔜 bech32 + 链 HRP |
+
+> 当前 GPU kernel 输出的是**压缩子公钥 + 比特币 HASH160**。其他 secp256k1 链复用同样的公钥,在主机端套各自(廉价)的编码即可。EVM/Tron/Cosmos 的内置编码器在[路线图](#路线图)里。注意各链 BIP44 coin type 不同(`m/44'/0'` BTC、`m/44'/60'` ETH、`m/44'/195'` Tron)—— 那只是本地阶段的派生路径。其他曲线的链(Solana/ed25519)**不在范围内**。
+
+---
+
 ## 安全模型
 
-```
-┌─────────────────────── 本地(安全)───────────────────────┐
-│  助记词 ──PBKDF2──> 种子 ──BIP32──> 主 xprv                  │
-│                                       │                     │
-│                                       ▼  硬化路径            │
-│                               账户 xprv                     │
-│                                       │                     │
-│                                       ▼  public_key()       │
-│                               xpub + 链码  ──────────────┐  │
-└───────────────────────────────────────────────────────  │ ─┘
-                                                           │ 导出(仅公开数据)
-┌─────────────────────── GPU(可不可信)──────────────────  ▼ ─┐
-│  对区间内每个 index i:                                       │
-│    I      = HMAC-SHA512(链码, xpub_pub || i)                 │
-│    childₚ = xpub_pub + IL·G          (非硬化,公钥侧)        │
-│    addr   = encode(HASH160(childₚ))                          │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph LOCAL["🔒 本地 —— 安全,永不离开本机"]
+        direction TB
+        M[助记词] -->|PBKDF2-HMAC-SHA512| S[种子]
+        S -->|BIP32| MK[主 xprv]
+        MK -->|硬化路径| AK[账户 xprv]
+        AK -->|public_key| XPUB[xpub + 链码]
+    end
+
+    XPUB ==>|导出:仅公开数据| GPUIN
+
+    subgraph GPU["⚡ GPU —— 可不可信 / 远程"]
+        direction TB
+        GPUIN["对每个 index i"] --> I["I = HMAC-SHA512(链码, pub‖i)"]
+        I --> C["childₚ = pub + IL·G(非硬化)"]
+        C --> A["公钥 + HASH160 → 地址"]
+    end
+
+    classDef secure fill:#0b3d2e,stroke:#1f7a5a,color:#e6fff4;
+    classDef gpu fill:#1a2e4d,stroke:#3a6ea5,color:#e6f0ff;
+    class M,S,MK,AK,XPUB secure;
+    class GPUIN,I,C,A gpu;
 ```
 
 - 助记词、种子、私钥**永不**跨越本地/GPU 边界。
@@ -147,6 +185,22 @@ let addresses = batch::batch_derive_cpu(&xpub, &cfg);
 - `ExtendedPrivateKey::from_seed` → `derive_path("m/84'/0'/0'")` → `public_key()` → `ExtendedPublicKey`。
 
 ### 阶段二 —— GPU(`kernels/`、`gpu_kernel`、`cuda`)
+
+```mermaid
+flowchart LR
+    IDX[index i] --> HMAC
+    CC[链码] --> HMAC
+    PUB[父公钥] --> HMAC[HMAC-SHA512]
+    HMAC --> IL["IL = 左 32 字节"]
+    IL --> CHK{"0 &lt; IL &lt; n ?"}
+    CHK -->|否| INV[status = 无效]
+    CHK -->|是| MUL["IL·G<br/>定基表"]
+    MUL --> ADD["+ parent_pub<br/>点加"]
+    ADD --> CMP[压缩 33B]
+    CMP --> OUTP[子公钥]
+    CMP --> H160[HASH160] --> OUTA[地址哈希]
+```
+
 - `derive_child_kernel`(CUDA)对每个 index 计算 `childₚ = parent_pub + IL·G`,其中 `I = HMAC-SHA512(链码, parent_pub‖index)`,再算 `HASH160(childₚ)`。
 - 父点在整个 batch 内是常量,所以在主机端解压一次、以仿射 `(x, y)` 传入 —— kernel 不做模平方根。
 - `IL·G` 使用预计算的**定基窗口表**(8 位窗口,32×255 个仿射点,~522 KB,启动时用 `k256` 生成一次),因此每个标量只需 ≤32 次点加、零次倍点。
@@ -183,9 +237,10 @@ A–E 阶段(工具链、哈希、secp256k1、HMAC + 派生、定基表)已完�
 - [ ] **HMAC pad 主机端预计算** —— 每次派生省掉 4 次 SHA-512 压缩中的 2 次。
 - [ ] **降低每线程 local memory** —— 派生 kernel 真正的占用率瓶颈。
 - [ ] **多流分块** 应对超大 count(重叠拷贝/计算)。
+- [ ] **更多链的内置地址编码器** —— EVM(`keccak256`)、波场、Cosmos(bech32),复用同样的 GPU 公钥。
 - [ ] BIP39 校验和验证;base58/bech32 留在主机端(开销小)即可,但值得标注。
 
-这些应能逼近原计划的 10M+ 地址/秒目标。
+前四项应能逼近原计划的 10M+ 地址/秒目标。
 
 ---
 

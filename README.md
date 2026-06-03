@@ -2,14 +2,16 @@
 
 *[中文文档](README.zh-CN.md)*
 
-**GPU-accelerated Bitcoin HD-wallet address derivation — your private keys never leave the machine.**
+**GPU-accelerated HD-wallet address derivation for secp256k1 chains — your private keys never leave the machine.**
 
 `blind-derivation` splits HD wallet address generation into two phases so that the heavy, parallelizable work can be safely outsourced to a GPU (local or remote) **without ever exposing secret key material**:
 
 1. **Local / secure** — mnemonic → seed → `xpub` (private keys stay put).
-2. **GPU / outsourceable** — `xpub` → millions of child addresses, computed entirely on-device.
+2. **GPU / outsourceable** — `xpub` → millions of child public keys / addresses, computed entirely on-device.
 
-Because non-hardened BIP32 derivation needs only the public key and chain code, the GPU works **blind**: it can generate every address but can never reverse them to a private key. That's the "blind" in blind-derivation.
+Because non-hardened BIP32 derivation needs only the public key and chain code, the GPU works **blind**: it can generate every public key but can never reverse them to a private key. That's the "blind" in blind-derivation.
+
+The GPU computes the expensive, **chain-agnostic** core — non-hardened secp256k1 child public keys — which every secp256k1 chain shares (Bitcoin & forks, Ethereum & EVM L2s, Tron, Cosmos, …). See [Multi-chain support](#multi-chain-support).
 
 > ⚡ Real, measured GPU derivation — **~2.0–2.7M addresses/sec on an RTX 3070 Laptop**, ~16–20× a 16-thread CPU. Not a simulation.
 
@@ -29,6 +31,7 @@ This project removes the trade-off. The secret-bearing step (PBKDF2 + hardened B
 - **Real CUDA kernels** — secp256k1 field & group arithmetic, fixed-base `k·G`, HMAC-SHA512, SHA-256, RIPEMD-160, all implemented on-device. No CPU fallback on the GPU path.
 - **Byte-for-byte correctness** — every GPU result is validated against a pure-Rust CPU oracle (`k256` + the project's own BIP32) in the test suite.
 - **Three build modes** — real GPU (`cuda`), CPU simulation for GPU-less dev (`cuda-sim`), or pure-CPU default.
+- **Chain-agnostic core** — the GPU derives secp256k1 child public keys shared by all secp256k1 chains; Bitcoin address encoding is built in, others reuse the same pubkeys (see [Multi-chain support](#multi-chain-support)).
 - **Address types** — P2PKH (legacy), P2WPKH (native SegWit / bech32), P2SH-P2WPKH (wrapped SegWit).
 - **CLI + library** — use it as a binary or embed the crate.
 
@@ -48,25 +51,60 @@ The fixed-base windowed table replaces 256 point-doublings per scalar with ≤32
 
 ---
 
+## Multi-chain support
+
+The hard part the GPU does — non-hardened BIP32 derivation of **secp256k1 child public keys** — is identical for *every* chain that uses the secp256k1 curve. Only the final, cheap **address-encoding** step differs per chain, and it runs on the host on already-derived public keys.
+
+```mermaid
+flowchart LR
+    PUB["secp256k1 child pubkey<br/>(GPU-derived, chain-agnostic)"]
+    PUB --> BTC["Bitcoin / forks<br/>HASH160 → base58 / bech32"]
+    PUB --> EVM["Ethereum & EVM L2s<br/>keccak256(uncompressed)[12:]"]
+    PUB --> TRON["Tron<br/>keccak256 → base58check"]
+    PUB --> COSMOS["Cosmos<br/>HASH160 → bech32 (chain hrp)"]
+
+    classDef done fill:#0b3d2e,stroke:#1f7a5a,color:#e6fff4;
+    classDef todo fill:#3d2e0b,stroke:#a5853a,color:#fff4e6;
+    class BTC done;
+    class EVM,TRON,COSMOS todo;
+```
+
+| Family | Examples | Pubkey derivation (GPU) | Address encoding |
+|--------|----------|:-----------------------:|------------------|
+| **Bitcoin & forks** | BTC, LTC, DOGE, BCH | ✅ shared | ✅ **built in** (P2PKH / P2WPKH / P2SH-P2WPKH) |
+| **Ethereum / EVM** | ETH, BSC, Polygon, Base, Arbitrum | ✅ shared | 🔜 `keccak256(uncompressed_pubkey)` — bring your own / on roadmap |
+| **Tron** | TRX | ✅ shared | 🔜 keccak256 + base58check |
+| **Cosmos** | ATOM, Osmosis | ✅ shared | 🔜 bech32 with chain HRP |
+
+> The GPU kernel currently outputs the **compressed child pubkey + Bitcoin HASH160**. For other secp256k1 chains, reuse the same pubkeys and apply that chain's (inexpensive) encoding on the host. Built-in encoders for EVM/Tron/Cosmos are on the [Roadmap](#roadmap). Note BIP44 coin types differ per chain (`m/44'/0'` BTC, `m/44'/60'` ETH, `m/44'/195'` Tron) — that's just the local-phase derivation path. Chains on other curves (Solana/ed25519) are **out of scope**.
+
+---
+
 ## Security model
 
-```
-┌─────────────────────── LOCAL (SECURE) ───────────────────────┐
-│  mnemonic ──PBKDF2──> seed ──BIP32──> master xprv             │
-│                                          │                    │
-│                                          ▼  hardened path     │
-│                                  account xprv                 │
-│                                          │                    │
-│                                          ▼  public_key()      │
-│                                  xpub + chain code  ───────┐  │
-└────────────────────────────────────────────────────────── │ ─┘
-                                                             │ export (public only)
-┌─────────────────────── GPU (UNTRUSTED OK) ──────────────── ▼ ─┐
-│  for index i in range:                                        │
-│    I      = HMAC-SHA512(chain_code, xpub_pub || i)            │
-│    childₚ = xpub_pub + IL·G          (non-hardened, pub-side) │
-│    addr   = encode(HASH160(childₚ))                           │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph LOCAL["🔒 LOCAL — secure, never leaves the machine"]
+        direction TB
+        M[mnemonic] -->|PBKDF2-HMAC-SHA512| S[seed]
+        S -->|BIP32| MK[master xprv]
+        MK -->|hardened path| AK[account xprv]
+        AK -->|public_key| XPUB[xpub + chain code]
+    end
+
+    XPUB ==>|export: public data only| GPUIN
+
+    subgraph GPU["⚡ GPU — can be untrusted / remote"]
+        direction TB
+        GPUIN["for each index i"] --> I["I = HMAC-SHA512(chain_code, pub‖i)"]
+        I --> C["childₚ = pub + IL·G  (non-hardened)"]
+        C --> A["pubkey + HASH160 → address"]
+    end
+
+    classDef secure fill:#0b3d2e,stroke:#1f7a5a,color:#e6fff4;
+    classDef gpu fill:#1a2e4d,stroke:#3a6ea5,color:#e6f0ff;
+    class M,S,MK,AK,XPUB secure;
+    class GPUIN,I,C,A gpu;
 ```
 
 - Mnemonic, seed, and private keys **never** cross the local/GPU boundary.
@@ -147,6 +185,22 @@ let addresses = batch::batch_derive_cpu(&xpub, &cfg);
 - `ExtendedPrivateKey::from_seed` → `derive_path("m/84'/0'/0'")` → `public_key()` → `ExtendedPublicKey`.
 
 ### Phase 2 — GPU (`kernels/`, `gpu_kernel`, `cuda`)
+
+```mermaid
+flowchart LR
+    IDX[index i] --> HMAC
+    CC[chain code] --> HMAC
+    PUB[parent pubkey] --> HMAC[HMAC-SHA512]
+    HMAC --> IL["IL = left 32 bytes"]
+    IL --> CHK{"0 &lt; IL &lt; n ?"}
+    CHK -->|no| INV[status = invalid]
+    CHK -->|yes| MUL["IL·G<br/>fixed-base table"]
+    MUL --> ADD["+ parent_pub<br/>point add"]
+    ADD --> CMP[compress 33B]
+    CMP --> OUTP[child pubkey]
+    CMP --> H160[HASH160] --> OUTA[address hash]
+```
+
 - `derive_child_kernel` (CUDA) computes, per index, `childₚ = parent_pub + IL·G` where `I = HMAC-SHA512(chain_code, parent_pub‖index)`, then `HASH160(childₚ)`.
 - The parent point is constant across the batch, so it is decompressed once on the host and passed as affine `(x, y)` — the kernel does no modular square root.
 - `IL·G` uses a precomputed **fixed-base windowed table** (8-bit windows, 32×255 affine points, ~522 KB, generated once via `k256`), so each scalar costs ≤32 point additions and zero doublings.
@@ -183,9 +237,10 @@ Stages A–E (toolchain, hashes, secp256k1, HMAC + derivation, fixed-base table)
 - [ ] **HMAC pad host-precompute** — skip 2 of the 4 SHA-512 compressions per derivation.
 - [ ] **Reduce per-thread local memory** — the real occupancy limiter on the derive kernel.
 - [ ] **Multi-stream chunking** for very large counts (overlap copy/compute).
+- [ ] **Built-in address encoders for more chains** — EVM (`keccak256`), Tron, Cosmos (bech32), reusing the same GPU-derived pubkeys.
 - [ ] BIP39 checksum validation; base58/bech32 on host is fine (cheap), but worth flagging.
 
-These should push toward the original 10M+ addr/s target.
+The first four should push toward the original 10M+ addr/s target.
 
 ---
 

@@ -2,7 +2,7 @@
 name = "blind-derivation"
 version = "0.1.0"
 edition = "2021"
-description = "GPU-accelerated Bitcoin HD-wallet batch address derivation from an xpub — private keys never leave the local machine"
+description = "GPU-accelerated HD-wallet batch address derivation for secp256k1 chains (Bitcoin, Ethereum/EVM, …) from an xpub — private keys never leave the local machine"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["bitcoin", "bip32", "hd-wallet", "cuda", "secp256k1"]
