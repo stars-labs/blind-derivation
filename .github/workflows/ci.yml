@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: test & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      # Default features: pure-CPU library + CLI.
+      - name: Build (default)
+        run: cargo build --verbose
+
+      - name: Test (default)
+        run: cargo test --verbose
+
+      # cuda-sim: CPU simulation of the GPU API — needs no nvcc or GPU,
+      # so it builds and runs on a standard runner.
+      - name: Build (cuda-sim)
+        run: cargo build --features cuda-sim --verbose
+
+      - name: Test (cuda-sim)
+        run: cargo test --features cuda-sim --verbose

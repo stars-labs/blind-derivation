@@ -1,5 +1,8 @@
 # blind-derivation
 
+[![CI](https://github.com/stars-labs/blind-derivation/actions/workflows/ci.yml/badge.svg)](https://github.com/stars-labs/blind-derivation/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+
 *[中文文档](README.zh-CN.md)*
 
 **GPU-accelerated HD-wallet address derivation for secp256k1 chains — your private keys never leave the machine.**

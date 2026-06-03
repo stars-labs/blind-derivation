@@ -1,5 +1,8 @@
 # blind-derivation
 
+[![CI](https://github.com/stars-labs/blind-derivation/actions/workflows/ci.yml/badge.svg)](https://github.com/stars-labs/blind-derivation/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#许可证)
+
 *[English](README.md)*
 
 **GPU 加速的 secp256k1 链 HD 钱包地址推导 —— 私钥永不离开本地。**
