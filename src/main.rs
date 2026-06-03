@@ -224,7 +224,10 @@ fn batch_derive(xpub_str: &str, start: u32, count: u32, address_type: &str, main
         mainnet,
     };
 
-    println!("Deriving {} addresses starting from index {}...\n", count, start);
+    println!(
+        "Deriving {} addresses starting from index {}...\n",
+        count, start
+    );
 
     let start_time = Instant::now();
     let results = batch_derive_cpu(&xpub, &config);
@@ -304,10 +307,8 @@ fn run_demo(count: u32) {
     };
 
     let external_addrs = batch_derive_cpu(&external, &external_config);
-    for result in external_addrs {
-        if let Ok(addr) = result {
-            println!("  m/84'/0'/0'/0/{}: {}", addr.index, addr.address);
-        }
+    for addr in external_addrs.into_iter().flatten() {
+        println!("  m/84'/0'/0'/0/{}: {}", addr.index, addr.address);
     }
 
     println!("\nFirst 5 change addresses (m/84'/0'/0'/1/i):");
@@ -323,10 +324,8 @@ fn run_demo(count: u32) {
     };
 
     let internal_addrs = batch_derive_cpu(&internal, &internal_config);
-    for result in internal_addrs {
-        if let Ok(addr) = result {
-            println!("  m/84'/0'/0'/1/{}: {}", addr.index, addr.address);
-        }
+    for addr in internal_addrs.into_iter().flatten() {
+        println!("  m/84'/0'/0'/1/{}: {}", addr.index, addr.address);
     }
 
     println!("\n=== SECURITY SUMMARY ===\n");
@@ -352,7 +351,10 @@ fn run_benchmark(count: u32) {
     println!("Configuration:");
     println!("  Addresses to derive: {}", count);
     println!("  Address type: P2WPKH (native segwit)");
-    println!("  CPU threads: {} (rayon auto)", rayon::current_num_threads());
+    println!(
+        "  CPU threads: {} (rayon auto)",
+        rayon::current_num_threads()
+    );
     println!();
 
     let config = BatchConfig {
@@ -364,7 +366,13 @@ fn run_benchmark(count: u32) {
 
     // Warm up
     println!("Warming up...");
-    let _ = batch_derive_cpu(&external, &BatchConfig { count: 100, ..config.clone() });
+    let _ = batch_derive_cpu(
+        &external,
+        &BatchConfig {
+            count: 100,
+            ..config.clone()
+        },
+    );
 
     // Benchmark
     println!("Running benchmark...\n");
@@ -382,8 +390,10 @@ fn run_benchmark(count: u32) {
     println!("Time elapsed:       {:?}", elapsed);
     println!("Derivation rate:    {:.2} addresses/second", rate);
     println!();
-    println!("Estimated time for 100M addresses: {:.2} seconds",
-             100_000_000.0 / rate);
+    println!(
+        "Estimated time for 100M addresses: {:.2} seconds",
+        100_000_000.0 / rate
+    );
     println!();
     println!("Note: GPU (CUDA) implementation can achieve 10-100x speedup.");
 }
@@ -413,7 +423,7 @@ fn export_gpu(xpub_str: &str, format: &str) {
     match format.to_lowercase().as_str() {
         "hex" => {
             println!("Hex:");
-            println!("{}\n", hex::encode(&bytes));
+            println!("{}\n", hex::encode(bytes));
         }
         "base64" => {
             use std::io::Write;
@@ -429,8 +439,14 @@ fn export_gpu(xpub_str: &str, format: &str) {
     }
 
     println!("Components:");
-    println!("  Public key (33 bytes): {}", hex::encode(&export_data.pubkey));
-    println!("  Chain code (32 bytes): {}", hex::encode(&export_data.chain_code));
+    println!(
+        "  Public key (33 bytes): {}",
+        hex::encode(export_data.pubkey)
+    );
+    println!(
+        "  Chain code (32 bytes): {}",
+        hex::encode(export_data.chain_code)
+    );
     println!();
     println!("This data is sufficient for GPU to derive unlimited non-hardened addresses.");
     println!("Private keys CANNOT be derived from this data.");
@@ -493,7 +509,10 @@ fn list_gpu_devices() {
             } else {
                 for (i, dev) in devices.iter().enumerate() {
                     println!("Device {}: {}", i, dev.name);
-                    println!("  Compute Capability: {}.{}", dev.compute_capability.0, dev.compute_capability.1);
+                    println!(
+                        "  Compute Capability: {}.{}",
+                        dev.compute_capability.0, dev.compute_capability.1
+                    );
                     println!("  Total Memory: {} MB", dev.total_memory / 1024 / 1024);
                     println!("  Multiprocessors: {}", dev.multiprocessor_count);
                     println!();
@@ -515,8 +534,14 @@ fn run_gpu_demo(count: u32, device_id: usize) {
     let cuda_ctx = match CudaContext::new(device_id) {
         Ok(ctx) => {
             println!("  Device: {}", ctx.device_info.name);
-            println!("  Compute: SM {}.{}", ctx.device_info.compute_capability.0, ctx.device_info.compute_capability.1);
-            println!("  Memory: {} MB", ctx.device_info.total_memory / 1024 / 1024);
+            println!(
+                "  Compute: SM {}.{}",
+                ctx.device_info.compute_capability.0, ctx.device_info.compute_capability.1
+            );
+            println!(
+                "  Memory: {} MB",
+                ctx.device_info.total_memory / 1024 / 1024
+            );
             println!("  MPs: {}\n", ctx.device_info.multiprocessor_count);
             ctx
         }
@@ -552,7 +577,10 @@ fn run_gpu_demo(count: u32, device_id: usize) {
     println!("  Exported {} bytes to GPU\n", gpu_data.to_bytes().len());
 
     // Step 4: Run GPU batch derivation
-    println!("Step 4: Running GPU batch derivation ({} addresses)...", count);
+    println!(
+        "Step 4: Running GPU batch derivation ({} addresses)...",
+        count
+    );
 
     let config = CudaBatchConfig {
         start_index: 0,
@@ -569,8 +597,10 @@ fn run_gpu_demo(count: u32, device_id: usize) {
             println!("Time elapsed:      {:.2} ms", result.elapsed_ms);
             println!("Derivation rate:   {:.2} addresses/sec", rate);
             println!();
-            println!("Estimated time for 100M addresses: {:.2} seconds",
-                     100_000_000.0 / rate);
+            println!(
+                "Estimated time for 100M addresses: {:.2} seconds",
+                100_000_000.0 / rate
+            );
         }
         Err(e) => {
             eprintln!("GPU derivation failed: {}", e);
@@ -594,8 +624,12 @@ fn run_gpu_demo(count: u32, device_id: usize) {
     let cpu_count = results.iter().filter(|r| r.is_ok()).count() as u32;
     let cpu_rate = cpu_count as f64 / elapsed.as_secs_f64();
 
-    println!("CPU ({} addresses): {:.2} ms ({:.2} addr/sec)",
-             cpu_count, elapsed.as_secs_f64() * 1000.0, cpu_rate);
+    println!(
+        "CPU ({} addresses): {:.2} ms ({:.2} addr/sec)",
+        cpu_count,
+        elapsed.as_secs_f64() * 1000.0,
+        cpu_rate
+    );
     println!();
 
     println!("=== SECURITY SUMMARY ===\n");

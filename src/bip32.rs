@@ -5,7 +5,6 @@
 //! GPU acceleration using only the public key.
 
 use hmac::{Hmac, Mac};
-use zeroize::{Zeroize, ZeroizeOnDrop};
 use k256::{
     elliptic_curve::{
         ops::Reduce,
@@ -16,6 +15,7 @@ use k256::{
 };
 use sha2::Sha512;
 use thiserror::Error;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Maximum allowed BIP32 derivation path depth.
 pub const MAX_PATH_DEPTH: usize = 10;
@@ -81,7 +81,8 @@ impl ExtendedPrivateKey {
         }
 
         // HMAC-SHA512 with key "Bitcoin seed"
-        let mut mac = Hmac::<Sha512>::new_from_slice(b"Bitcoin seed").expect("HMAC accepts any key");
+        let mut mac =
+            Hmac::<Sha512>::new_from_slice(b"Bitcoin seed").expect("HMAC accepts any key");
         mac.update(seed);
         let result = mac.finalize().into_bytes();
 
@@ -188,9 +189,7 @@ impl ExtendedPrivateKey {
 
         let mut current = self.clone();
 
-        let components: Vec<&str> = path.split('/').skip(1)
-            .filter(|c| !c.is_empty())
-            .collect();
+        let components: Vec<&str> = path.split('/').skip(1).filter(|c| !c.is_empty()).collect();
         if components.len() > MAX_PATH_DEPTH {
             return Err(Bip32Error::PathTooDeep(components.len()));
         }
@@ -205,11 +204,7 @@ impl ExtendedPrivateKey {
                 .parse()
                 .map_err(|_| Bip32Error::InvalidPath(format!("Invalid index: {}", component)))?;
 
-            let child_index = if hardened {
-                index + 0x80000000
-            } else {
-                index
-            };
+            let child_index = if hardened { index + 0x80000000 } else { index };
 
             current = current.derive_child(child_index)?;
         }
@@ -245,7 +240,7 @@ impl ExtendedPublicKey {
         let il_point = ProjectivePoint::GENERATOR * il_scalar;
 
         let parent_point =
-            AffinePoint::from_encoded_point(&EncodedPoint::from_bytes(&self.key).unwrap());
+            AffinePoint::from_encoded_point(&EncodedPoint::from_bytes(self.key).unwrap());
 
         if parent_point.is_none().into() {
             return Err(Bip32Error::InvalidKey);
@@ -289,9 +284,7 @@ impl ExtendedPublicKey {
 
         let mut current = self.clone();
 
-        let components: Vec<&str> = path.split('/').skip(1)
-            .filter(|c| !c.is_empty())
-            .collect();
+        let components: Vec<&str> = path.split('/').skip(1).filter(|c| !c.is_empty()).collect();
         if components.len() > MAX_PATH_DEPTH {
             return Err(Bip32Error::PathTooDeep(components.len()));
         }
@@ -311,7 +304,11 @@ impl ExtendedPublicKey {
     }
 
     /// Batch derive multiple child public keys (for GPU acceleration baseline)
-    pub fn derive_children_batch(&self, start_index: u32, count: u32) -> Vec<Result<Self, Bip32Error>> {
+    pub fn derive_children_batch(
+        &self,
+        start_index: u32,
+        count: u32,
+    ) -> Vec<Result<Self, Bip32Error>> {
         (start_index..start_index + count)
             .map(|i| self.derive_child(i))
             .collect()
@@ -364,9 +361,7 @@ mod tests {
     #[test]
     fn test_master_key_from_seed() {
         // Test vector from BIP32 spec
-        let seed = hex::decode(
-            "000102030405060708090a0b0c0d0e0f"
-        ).unwrap();
+        let seed = hex::decode("000102030405060708090a0b0c0d0e0f").unwrap();
         // Pad to 64 bytes (this is a simplified test)
         let mut full_seed = [0u8; 64];
         full_seed[..16].copy_from_slice(&seed);

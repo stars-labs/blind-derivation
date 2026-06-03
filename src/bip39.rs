@@ -50,7 +50,7 @@ pub fn validate_mnemonic(mnemonic: &str) -> Result<Vec<&str>, Bip39Error> {
     let checksum_bits = total_bits / 33;
     let entropy_bytes = (total_bits - checksum_bits) / 8;
 
-    let mut bit_data = vec![0u8; (total_bits + 7) / 8];
+    let mut bit_data = vec![0u8; total_bits.div_ceil(8)];
     for (i, &idx) in indices.iter().enumerate() {
         for j in 0..11usize {
             let bit = (idx >> (10 - j)) & 1;
@@ -80,7 +80,10 @@ pub fn validate_mnemonic(mnemonic: &str) -> Result<Vec<&str>, Bip39Error> {
 ///
 /// Uses PBKDF2-HMAC-SHA512 with 2048 iterations as per BIP39 spec.
 /// The passphrase is optional (empty string if not provided).
-pub fn mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> Result<Zeroizing<[u8; 64]>, Bip39Error> {
+pub fn mnemonic_to_seed(
+    mnemonic: &str,
+    passphrase: &str,
+) -> Result<Zeroizing<[u8; 64]>, Bip39Error> {
     // Validate mnemonic first
     validate_mnemonic(mnemonic)?;
 
@@ -106,7 +109,7 @@ mod tests {
 
         // Expected seed (first 32 bytes shown for brevity)
         let expected_hex = "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4";
-        assert_eq!(hex::encode(&*seed), expected_hex);
+        assert_eq!(hex::encode(*seed), expected_hex);
     }
 
     #[test]
@@ -115,7 +118,7 @@ mod tests {
         let seed = mnemonic_to_seed(mnemonic, "TREZOR").unwrap();
 
         let expected_hex = "c55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81b2f001698e7463b04";
-        assert_eq!(hex::encode(&*seed), expected_hex);
+        assert_eq!(hex::encode(*seed), expected_hex);
     }
 
     #[test]

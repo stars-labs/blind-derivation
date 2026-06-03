@@ -41,21 +41,13 @@ fn bench_batch_derivation(c: &mut Criterion) {
             mainnet: true,
         };
 
-        group.bench_with_input(
-            BenchmarkId::new("parallel", count),
-            count,
-            |b, _| {
-                b.iter(|| batch_derive_cpu(black_box(&xpub), black_box(&config)))
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("parallel", count), count, |b, _| {
+            b.iter(|| batch_derive_cpu(black_box(&xpub), black_box(&config)))
+        });
 
-        group.bench_with_input(
-            BenchmarkId::new("sequential", count),
-            count,
-            |b, _| {
-                b.iter(|| batch_derive_sequential(black_box(&xpub), black_box(&config)))
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("sequential", count), count, |b, _| {
+            b.iter(|| batch_derive_sequential(black_box(&xpub), black_box(&config)))
+        });
     }
 
     group.finish();

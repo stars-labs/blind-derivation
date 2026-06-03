@@ -68,7 +68,12 @@ impl HashKernels {
             .load_function("hash160_kernel")
             .map_err(|e| CudaError::KernelError(format!("hash160_kernel: {e}")))?;
         let stream = ctx.default_stream();
-        Ok(Self { ctx, stream, sha256, hash160 })
+        Ok(Self {
+            ctx,
+            stream,
+            sha256,
+            hash160,
+        })
     }
 
     /// Pack messages into a flat `n * MAX_MSG_LEN` buffer + lengths array.
@@ -118,7 +123,12 @@ impl HashKernels {
         let count = n as u32;
         let cfg = LaunchConfig::for_num_elems(count);
         let mut builder = self.stream.launch_builder(func);
-        builder.arg(&d_msgs).arg(&d_lens).arg(&stride).arg(&count).arg(&mut d_out);
+        builder
+            .arg(&d_msgs)
+            .arg(&d_lens)
+            .arg(&stride)
+            .arg(&count)
+            .arg(&mut d_out);
         unsafe { builder.launch(cfg) }
             .map_err(|e| CudaError::KernelError(format!("launch: {e}")))?;
 
@@ -135,13 +145,19 @@ impl HashKernels {
     /// SHA-256 each message (each <= 55 bytes). Returns `n * 32` bytes.
     pub fn sha256(&self, msgs: &[&[u8]]) -> Result<Vec<[u8; 32]>, CudaError> {
         let flat = self.run(&self.sha256.clone(), msgs, 32)?;
-        Ok(flat.chunks_exact(32).map(|c| c.try_into().unwrap()).collect())
+        Ok(flat
+            .chunks_exact(32)
+            .map(|c| c.try_into().unwrap())
+            .collect())
     }
 
     /// HASH160 = RIPEMD160(SHA256(x)) each message. Returns `n * 20` bytes.
     pub fn hash160(&self, msgs: &[&[u8]]) -> Result<Vec<[u8; 20]>, CudaError> {
         let flat = self.run(&self.hash160.clone(), msgs, 20)?;
-        Ok(flat.chunks_exact(20).map(|c| c.try_into().unwrap()).collect())
+        Ok(flat
+            .chunks_exact(20)
+            .map(|c| c.try_into().unwrap())
+            .collect())
     }
 
     /// Device name, for diagnostics.
@@ -173,7 +189,11 @@ impl EcKernels {
         let d_gtable = stream
             .clone_htod(&build_gtable())
             .map_err(|e| CudaError::MemoryError(format!("htod gtable: {e}")))?;
-        Ok(Self { stream, scalar_mul_g, d_gtable })
+        Ok(Self {
+            stream,
+            scalar_mul_g,
+            d_gtable,
+        })
     }
 
     /// Compute `k·G` for each 32-byte big-endian scalar; returns 33-byte
@@ -206,7 +226,11 @@ impl EcKernels {
             shared_mem_bytes: 0,
         };
         let mut builder = self.stream.launch_builder(&self.scalar_mul_g);
-        builder.arg(&d_scalars).arg(&self.d_gtable).arg(&count).arg(&mut d_out);
+        builder
+            .arg(&d_scalars)
+            .arg(&self.d_gtable)
+            .arg(&count)
+            .arg(&mut d_out);
         unsafe { builder.launch(cfg) }
             .map_err(|e| CudaError::KernelError(format!("launch: {e}")))?;
 
@@ -217,7 +241,10 @@ impl EcKernels {
         self.stream
             .synchronize()
             .map_err(|e| CudaError::KernelError(format!("sync: {e}")))?;
-        Ok(host_out.chunks_exact(33).map(|c| c.try_into().unwrap()).collect())
+        Ok(host_out
+            .chunks_exact(33)
+            .map(|c| c.try_into().unwrap())
+            .collect())
     }
 }
 
@@ -254,7 +281,11 @@ impl DeriveKernel {
         let d_gtable = stream
             .clone_htod(&build_gtable())
             .map_err(|e| CudaError::MemoryError(format!("htod gtable: {e}")))?;
-        Ok(Self { stream, func, d_gtable })
+        Ok(Self {
+            stream,
+            func,
+            d_gtable,
+        })
     }
 
     /// Decompress a compressed pubkey to affine (x, y) big-endian via k256.
@@ -285,19 +316,33 @@ impl DeriveKernel {
         let n = count as usize;
         let (px, py) = Self::decompress(pubkey)?;
 
-        let d_pub = self.stream.clone_htod(pubkey.as_slice())
+        let d_pub = self
+            .stream
+            .clone_htod(pubkey.as_slice())
             .map_err(|e| CudaError::MemoryError(format!("htod pub: {e}")))?;
-        let d_cc = self.stream.clone_htod(chain_code.as_slice())
+        let d_cc = self
+            .stream
+            .clone_htod(chain_code.as_slice())
             .map_err(|e| CudaError::MemoryError(format!("htod cc: {e}")))?;
-        let d_px = self.stream.clone_htod(px.as_slice())
+        let d_px = self
+            .stream
+            .clone_htod(px.as_slice())
             .map_err(|e| CudaError::MemoryError(format!("htod px: {e}")))?;
-        let d_py = self.stream.clone_htod(py.as_slice())
+        let d_py = self
+            .stream
+            .clone_htod(py.as_slice())
             .map_err(|e| CudaError::MemoryError(format!("htod py: {e}")))?;
-        let mut d_out_pub = self.stream.alloc_zeros::<u8>(n * 33)
+        let mut d_out_pub = self
+            .stream
+            .alloc_zeros::<u8>(n * 33)
             .map_err(|e| CudaError::MemoryError(format!("alloc pub: {e}")))?;
-        let mut d_out_h160 = self.stream.alloc_zeros::<u8>(n * 20)
+        let mut d_out_h160 = self
+            .stream
+            .alloc_zeros::<u8>(n * 20)
             .map_err(|e| CudaError::MemoryError(format!("alloc h160: {e}")))?;
-        let mut d_out_status = self.stream.alloc_zeros::<u8>(n)
+        let mut d_out_status = self
+            .stream
+            .alloc_zeros::<u8>(n)
             .map_err(|e| CudaError::MemoryError(format!("alloc status: {e}")))?;
 
         // Resource-heavy kernel (HMAC-SHA512 + EC) with a large per-thread
@@ -310,22 +355,32 @@ impl DeriveKernel {
             shared_mem_bytes: 0,
         };
         let mut b = self.stream.launch_builder(&self.func);
-        b.arg(&d_pub).arg(&d_cc).arg(&d_px).arg(&d_py).arg(&self.d_gtable)
-            .arg(&start_index).arg(&count)
-            .arg(&mut d_out_pub).arg(&mut d_out_h160).arg(&mut d_out_status);
-        unsafe { b.launch(cfg) }
-            .map_err(|e| CudaError::KernelError(format!("launch: {e}")))?;
+        b.arg(&d_pub)
+            .arg(&d_cc)
+            .arg(&d_px)
+            .arg(&d_py)
+            .arg(&self.d_gtable)
+            .arg(&start_index)
+            .arg(&count)
+            .arg(&mut d_out_pub)
+            .arg(&mut d_out_h160)
+            .arg(&mut d_out_status);
+        unsafe { b.launch(cfg) }.map_err(|e| CudaError::KernelError(format!("launch: {e}")))?;
 
         let mut h_pub = vec![0u8; n * 33];
         let mut h_h160 = vec![0u8; n * 20];
         let mut h_status = vec![0u8; n];
-        self.stream.memcpy_dtoh(&d_out_pub, &mut h_pub)
+        self.stream
+            .memcpy_dtoh(&d_out_pub, &mut h_pub)
             .map_err(|e| CudaError::MemoryError(format!("dtoh pub: {e}")))?;
-        self.stream.memcpy_dtoh(&d_out_h160, &mut h_h160)
+        self.stream
+            .memcpy_dtoh(&d_out_h160, &mut h_h160)
             .map_err(|e| CudaError::MemoryError(format!("dtoh h160: {e}")))?;
-        self.stream.memcpy_dtoh(&d_out_status, &mut h_status)
+        self.stream
+            .memcpy_dtoh(&d_out_status, &mut h_status)
             .map_err(|e| CudaError::MemoryError(format!("dtoh status: {e}")))?;
-        self.stream.synchronize()
+        self.stream
+            .synchronize()
             .map_err(|e| CudaError::KernelError(format!("sync: {e}")))?;
 
         let mut out = Vec::with_capacity(n);
@@ -406,7 +461,9 @@ mod tests {
         for _ in 0..60 {
             let mut s = [0u8; 32];
             for chunk in s.chunks_mut(8) {
-                state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                state = state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 chunk.copy_from_slice(&state.to_be_bytes());
             }
             scalars.push(s);
@@ -447,14 +504,21 @@ mod tests {
         let xpub = master.derive_path("m/84'/0'/0'").unwrap().public_key();
 
         let count = 512u32;
-        let gpu = dk.derive_batch(&xpub.key, &xpub.chain_code, 0, count).unwrap();
+        let gpu = dk
+            .derive_batch(&xpub.key, &xpub.chain_code, 0, count)
+            .unwrap();
         assert_eq!(gpu.len() as u32, count);
 
         for g in &gpu {
             let cpu = xpub.derive_child(g.index).expect("cpu derive");
             assert_eq!(g.status, 0, "index {} unexpectedly invalid", g.index);
             assert_eq!(g.pubkey, cpu.key, "pubkey mismatch at {}", g.index);
-            assert_eq!(g.hash160, hash160(&cpu.key), "hash160 mismatch at {}", g.index);
+            assert_eq!(
+                g.hash160,
+                hash160(&cpu.key),
+                "hash160 mismatch at {}",
+                g.index
+            );
         }
     }
 

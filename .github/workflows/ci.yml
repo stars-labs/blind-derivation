@@ -15,22 +15,43 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      # The real `cuda` feature needs nvcc + a GPU (not on hosted runners),
+      # so we lint the default and cuda-sim configurations.
+      - name: Clippy (default)
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Clippy (cuda-sim)
+        run: cargo clippy --all-targets --features cuda-sim -- -D warnings
+
   test:
     name: test & build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
 
       # Default features: pure-CPU library + CLI.
       - name: Build (default)
         run: cargo build --verbose
-
       - name: Test (default)
         run: cargo test --verbose
 
@@ -38,6 +59,5 @@ jobs:
       # so it builds and runs on a standard runner.
       - name: Build (cuda-sim)
         run: cargo build --features cuda-sim --verbose
-
       - name: Test (cuda-sim)
         run: cargo test --features cuda-sim --verbose

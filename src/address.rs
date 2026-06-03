@@ -62,7 +62,6 @@ pub fn p2sh_p2wpkh_address(pubkey: &[u8; 33], mainnet: bool) -> String {
     bs58::encode(payload).with_check().into_string()
 }
 
-
 /// Address type enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AddressType {
@@ -87,8 +86,9 @@ mod tests {
     #[test]
     fn test_hash160() {
         // Test vector
-        let pubkey = hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
-            .unwrap();
+        let pubkey =
+            hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
+                .unwrap();
         let hash = hash160(&pubkey);
         let expected = hex::decode("751e76e8199196d454941c45d1b3a323f1433bd6").unwrap();
         assert_eq!(hash.to_vec(), expected);
@@ -97,10 +97,11 @@ mod tests {
     #[test]
     fn test_p2pkh_address() {
         // Generator point public key (compressed)
-        let pubkey: [u8; 33] = hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let pubkey: [u8; 33] =
+            hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
+                .unwrap()
+                .try_into()
+                .unwrap();
 
         let address = p2pkh_address(&pubkey, true);
         assert_eq!(address, "1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH");
@@ -108,10 +109,11 @@ mod tests {
 
     #[test]
     fn test_p2wpkh_address() {
-        let pubkey: [u8; 33] = hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let pubkey: [u8; 33] =
+            hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
+                .unwrap()
+                .try_into()
+                .unwrap();
 
         let address = p2wpkh_address(&pubkey, true);
         assert_eq!(address, "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
@@ -119,10 +121,11 @@ mod tests {
 
     #[test]
     fn test_p2sh_p2wpkh_address() {
-        let pubkey: [u8; 33] = hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let pubkey: [u8; 33] =
+            hex::decode("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
+                .unwrap()
+                .try_into()
+                .unwrap();
 
         let address = p2sh_p2wpkh_address(&pubkey, true);
         // This should be a valid P2SH address starting with 3

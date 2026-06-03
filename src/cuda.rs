@@ -80,8 +80,7 @@ mod cuda_impl {
     use super::*;
     use crate::gpu_kernel::DeriveKernel;
     use cudarc::driver::sys::{
-        cuDeviceGet, cuDeviceGetAttribute, cuDeviceGetName, cuDeviceTotalMem_v2,
-        CUdevice_attribute,
+        cuDeviceGet, cuDeviceGetAttribute, cuDeviceGetName, cuDeviceTotalMem_v2, CUdevice_attribute,
     };
     use cudarc::driver::{CudaContext as CudarContext, CudaStream};
     use std::sync::Arc;
@@ -305,11 +304,9 @@ mod sim_impl {
             let range: Vec<u32> = (config.start_index..config.start_index + config.count).collect();
             let derived: Vec<([u8; 33], [u8; 20])> = range
                 .into_par_iter()
-                .map(|i| {
-                    match ext_pub.derive_child(i) {
-                        Ok(child) => (child.key, hash160(&child.key)),
-                        Err(_) => ([0u8; 33], [0u8; 20]),
-                    }
+                .map(|i| match ext_pub.derive_child(i) {
+                    Ok(child) => (child.key, hash160(&child.key)),
+                    Err(_) => ([0u8; 33], [0u8; 20]),
                 })
                 .collect();
 

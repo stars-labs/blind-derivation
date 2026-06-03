@@ -45,10 +45,16 @@ impl Default for BatchConfig {
 impl BatchConfig {
     pub fn validate(&self) -> Result<(), String> {
         if self.count > MAX_BATCH_COUNT {
-            return Err(format!("count {} exceeds maximum batch size of {}", self.count, MAX_BATCH_COUNT));
+            return Err(format!(
+                "count {} exceeds maximum batch size of {}",
+                self.count, MAX_BATCH_COUNT
+            ));
         }
         if self.start_index > MAX_START_INDEX {
-            return Err(format!("start_index {} would cause index overflow", self.start_index));
+            return Err(format!(
+                "start_index {} would cause index overflow",
+                self.start_index
+            ));
         }
         Ok(())
     }
