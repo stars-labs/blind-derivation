@@ -1,0 +1,55 @@
+[package]
+name = "blind-derivation"
+version = "0.1.0"
+edition = "2021"
+description = "GPU-accelerated Bitcoin HD-wallet batch address derivation from an xpub — private keys never leave the local machine"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["bitcoin", "bip32", "hd-wallet", "cuda", "secp256k1"]
+categories = ["cryptography::cryptocurrencies", "command-line-utilities"]
+repository = "https://github.com/stars-labs/blind-derivation"
+
+[dependencies]
+# Cryptographic primitives
+sha2 = "0.10"
+hmac = "0.12"
+pbkdf2 = "0.12"
+ripemd = "0.1"
+
+# Elliptic curve (secp256k1)
+k256 = { version = "0.13", features = ["arithmetic", "ecdsa"] }
+
+# Encoding
+bs58 = { version = "0.5", features = ["check"] }
+bech32 = { version = "0.11", features = ["std"] }
+hex = "0.4"
+
+# CLI and utilities
+clap = { version = "4", features = ["derive"] }
+thiserror = "2"
+zeroize = { version = "1", features = ["derive"] }
+rayon = "1.10"  # For CPU parallel baseline
+
+# CUDA support (use latest for CUDA 12.8 support)
+cudarc = { version = "0.18", optional = true, features = ["cuda-version-from-build-system"] }
+
+# For benchmarking
+criterion = { version = "0.5", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[features]
+default = []
+cuda = ["cudarc"]
+cuda-sim = []  # Simulation mode without real CUDA
+bench = ["criterion"]
+
+[[bench]]
+name = "derivation"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3

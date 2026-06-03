@@ -1,0 +1,147 @@
+   Compiling libc v0.2.177
+   Compiling serde_core v1.0.228
+   Compiling either v1.15.0
+   Compiling zerocopy v0.8.31
+   Compiling serde v1.0.228
+   Compiling autocfg v1.5.0
+   Compiling once_cell v1.21.3
+   Compiling serde_json v1.0.145
+   Compiling ryu v1.0.20
+   Compiling itoa v1.0.15
+   Compiling zerocopy-derive v0.8.31
+   Compiling serde_derive v1.0.228
+   Compiling ciborium-io v0.2.2
+   Compiling plotters-backend v0.3.7
+   Compiling memchr v2.7.6
+   Compiling regex-syntax v0.8.8
+   Compiling same-file v1.0.6
+   Compiling cast v0.3.0
+   Compiling rayon v1.11.0
+   Compiling itertools v0.10.5
+   Compiling walkdir v2.5.0
+   Compiling plotters-svg v0.3.7
+   Compiling oorandom v11.1.5
+   Compiling anes v0.1.6
+   Compiling num-traits v0.2.19
+   Compiling regex-automata v0.4.13
+   Compiling getrandom v0.2.16
+   Compiling is-terminal v0.4.17
+   Compiling criterion-plot v0.5.0
+   Compiling plotters v0.3.7
+   Compiling rand_core v0.6.4
+   Compiling ff v0.13.1
+   Compiling crypto-bigint v0.5.5
+   Compiling signature v2.2.0
+   Compiling group v0.13.0
+   Compiling regex v1.12.2
+   Compiling elliptic-curve v0.13.8
+   Compiling half v2.7.1
+   Compiling ecdsa v0.16.9
+   Compiling ciborium-ll v0.2.2
+   Compiling tinytemplate v1.2.1
+   Compiling ciborium v0.2.2
+   Compiling k256 v0.13.4
+   Compiling criterion v0.5.1
+   Compiling blind-derivation v0.1.0 (/home/freeman.xiong/Documents/github/hecoinfo/blind-derivation)
+    Finished `bench` profile [optimized] target(s) in 53.92s
+     Running benches/derivation.rs (target/release/deps/derivation-21991135f67fec49)
+Gnuplot not found, using plotters backend
+Benchmarking single_address_derivation
+Benchmarking single_address_derivation: Warming up for 3.0000 s
+Benchmarking single_address_derivation: Collecting 100 samples in estimated 5.2228 s (96k iterations)
+Benchmarking single_address_derivation: Analyzing
+single_address_derivation
+                        time:   [54.194 µs 54.372 µs 54.606 µs]
+Found 10 outliers among 100 measurements (10.00%)
+  2 (2.00%) high mild
+  8 (8.00%) high severe
+
+Benchmarking batch_derivation/parallel/100
+Benchmarking batch_derivation/parallel/100: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 5.2s, enable flat sampling, or reduce sample count to 60.
+Benchmarking batch_derivation/parallel/100: Collecting 100 samples in estimated 5.2017 s (5050 iterations)
+Benchmarking batch_derivation/parallel/100: Analyzing
+batch_derivation/parallel/100
+                        time:   [959.10 µs 968.87 µs 979.65 µs]
+Found 9 outliers among 100 measurements (9.00%)
+  2 (2.00%) low mild
+  5 (5.00%) high mild
+  2 (2.00%) high severe
+Benchmarking batch_derivation/sequential/100
+Benchmarking batch_derivation/sequential/100: Warming up for 3.0000 s
+Benchmarking batch_derivation/sequential/100: Collecting 100 samples in estimated 5.2397 s (900 iterations)
+Benchmarking batch_derivation/sequential/100: Analyzing
+batch_derivation/sequential/100
+                        time:   [5.7987 ms 5.8796 ms 5.9673 ms]
+Found 11 outliers among 100 measurements (11.00%)
+  9 (9.00%) high mild
+  2 (2.00%) high severe
+Benchmarking batch_derivation/parallel/1000
+Benchmarking batch_derivation/parallel/1000: Warming up for 3.0000 s
+Benchmarking batch_derivation/parallel/1000: Collecting 100 samples in estimated 5.2653 s (600 iterations)
+Benchmarking batch_derivation/parallel/1000: Analyzing
+batch_derivation/parallel/1000
+                        time:   [8.4118 ms 8.4780 ms 8.5516 ms]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+Benchmarking batch_derivation/sequential/1000
+Benchmarking batch_derivation/sequential/1000: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 5.5s, or reduce sample count to 90.
+Benchmarking batch_derivation/sequential/1000: Collecting 100 samples in estimated 5.5446 s (100 iterations)
+Benchmarking batch_derivation/sequential/1000: Analyzing
+batch_derivation/sequential/1000
+                        time:   [54.993 ms 55.353 ms 55.898 ms]
+Found 9 outliers among 100 measurements (9.00%)
+  3 (3.00%) high mild
+  6 (6.00%) high severe
+Benchmarking batch_derivation/parallel/10000
+Benchmarking batch_derivation/parallel/10000: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 8.0s, or reduce sample count to 60.
+Benchmarking batch_derivation/parallel/10000: Collecting 100 samples in estimated 8.0161 s (100 iterations)
+Benchmarking batch_derivation/parallel/10000: Analyzing
+batch_derivation/parallel/10000
+                        time:   [84.886 ms 85.466 ms 86.061 ms]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking batch_derivation/sequential/10000
+Benchmarking batch_derivation/sequential/10000: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 56.0s, or reduce sample count to 10.
+Benchmarking batch_derivation/sequential/10000: Collecting 100 samples in estimated 56.012 s (100 iterations)
+Benchmarking batch_derivation/sequential/10000: Analyzing
+batch_derivation/sequential/10000
+                        time:   [569.20 ms 571.57 ms 574.01 ms]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
+Benchmarking address_encoding/p2pkh
+Benchmarking address_encoding/p2pkh: Warming up for 3.0000 s
+Benchmarking address_encoding/p2pkh: Collecting 100 samples in estimated 5.0025 s (5.5M iterations)
+Benchmarking address_encoding/p2pkh: Analyzing
+address_encoding/p2pkh  time:   [890.17 ns 893.49 ns 897.54 ns]
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) high mild
+  4 (4.00%) high severe
+Benchmarking address_encoding/p2wpkh
+Benchmarking address_encoding/p2wpkh: Warming up for 3.0000 s
+Benchmarking address_encoding/p2wpkh: Collecting 100 samples in estimated 5.0009 s (12M iterations)
+Benchmarking address_encoding/p2wpkh: Analyzing
+address_encoding/p2wpkh time:   [421.71 ns 422.57 ns 423.65 ns]
+Found 12 outliers among 100 measurements (12.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+  6 (6.00%) high severe
+Benchmarking address_encoding/p2sh_p2wpkh
+Benchmarking address_encoding/p2sh_p2wpkh: Warming up for 3.0000 s
+Benchmarking address_encoding/p2sh_p2wpkh: Collecting 100 samples in estimated 5.0057 s (4.4M iterations)
+Benchmarking address_encoding/p2sh_p2wpkh: Analyzing
+address_encoding/p2sh_p2wpkh
+                        time:   [1.1397 µs 1.1424 µs 1.1457 µs]
+Found 9 outliers among 100 measurements (9.00%)
+  2 (2.00%) high mild
+  7 (7.00%) high severe
+

@@ -1,0 +1,6 @@
+/target
+.direnv
+result
+
+# Internal/private docs — not for the public repo (remove this line to publish)
+VASTAI_VS_OWN_GPU_ANALYSIS.md
